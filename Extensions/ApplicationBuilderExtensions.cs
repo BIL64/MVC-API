@@ -14,6 +14,7 @@ namespace Lms.Api.Extensions
 
                 //db.Database.EnsureDeleted();
                 //db.Database.Migrate();
+                //db.Database.EnsureCreated();
 
                 try
                 {

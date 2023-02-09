@@ -15,33 +15,33 @@ namespace Lms.Api.Controllers
     [ApiController]
     public class GamesController : ControllerBase
     {
-        private readonly LmsApiContext uow;
+        private readonly IUoW uow; // Viktigt att det är interfacet här!
 
-        public GamesController(LmsApiContext uow)
+        public GamesController(IUoW uow)
         {
             this.uow = uow;
         }
 
         // GET: api/Games
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Game>>> GetGame()
+        public Task<IEnumerable<Game>> GetGame()
         {
-          if (uow.Game == null)
+          if (uow.GameRepository == null)
           {
-              return NotFound();
+              throw new NotImplementedException();
           }
-            return await uow.Game.ToListAsync();
+            return uow.GameRepository.GetAll(); // ToList()
         }
 
         // GET: api/Games/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Game>> GetGame(int id)
         {
-          if (uow.Game == null)
+          if (uow.GameRepository == null)
           {
               return NotFound();
           }
-            var game = await uow.Game.FindAsync(id);
+            var game = await uow.GameRepository.Get(id); // FindAsync()
 
             if (game == null)
             {
@@ -61,15 +61,16 @@ namespace Lms.Api.Controllers
                 return BadRequest();
             }
 
-            uow.Entry(game).State = EntityState.Modified;
+            //uow.Entry(game).State = EntityState.Modified;
+            uow.GameRepository.Update(game);
 
             try
             {
-                await uow.SaveChangesAsync();
+                await uow.CompleteAsync(); // SaveChangesAsync()
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!GameExists(id))
+                if (!await GameExists(id))
                 {
                     return NotFound();
                 }
@@ -87,12 +88,12 @@ namespace Lms.Api.Controllers
         [HttpPost]
         public async Task<ActionResult<Game>> PostGame(Game game)
         {
-          if (uow.Game == null)
+          if (uow.GameRepository == null)
           {
               return Problem("Entity set 'LmsApiContext.Game'  is null.");
           }
-            uow.Game.Add(game);
-            await uow.SaveChangesAsync();
+            uow.GameRepository.Add(game); // Add()
+            await uow.CompleteAsync(); // SaveChangesAsync()
 
             return CreatedAtAction("GetGame", new { id = game.Id }, game);
         }
@@ -101,25 +102,25 @@ namespace Lms.Api.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteGame(int id)
         {
-            if (uow.Game == null)
+            if (uow.GameRepository == null)
             {
                 return NotFound();
             }
-            var game = await uow.Game.FindAsync(id);
+            var game = await uow.GameRepository.Get(id);  // FindAsync()
             if (game == null)
             {
                 return NotFound();
             }
 
-            uow.Game.Remove(game);
-            await uow.SaveChangesAsync();
+            uow.GameRepository.Remove(game); // Remove()
+            await uow.CompleteAsync(); // SaveChangesAsync()
 
             return NoContent();
         }
 
-        private bool GameExists(int id)
+        private async Task<bool> GameExists(int id)
         {
-            return (uow.Game?.Any(e => e.Id == id)).GetValueOrDefault();
+            return await uow.GameRepository.AnyAsync(id); // Any()
         }
     }
 }

@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Lms.Data.Data;
 using Lms.Core.Entities;
 using Lms.Data.Data.Repositories;
+using Bogus.DataSets;
 
 namespace Lms.Api.Controllers
 {
@@ -15,33 +16,33 @@ namespace Lms.Api.Controllers
     [ApiController]
     public class TournamentsController : ControllerBase
     {
-        private readonly LmsApiContext uow;
+        private readonly IUoW uow; // Viktigt att det är interfacet här!
 
-        public TournamentsController(LmsApiContext uow)
+        public TournamentsController(IUoW uow)
         {
             this.uow = uow;
         }
 
         // GET: api/Tournaments
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Tournament>>> GetTournament()
+        public async Task<IEnumerable<Tournament>> GetTournament()
         {
-          if (uow.Tournament == null)
+          if (uow.TournamentRepository == null)
           {
-              return NotFound();
+              throw new NotImplementedException();
           }
-            return await uow.Tournament.ToListAsync();
+            return await uow.TournamentRepository.GetAll(); // ToList()
         }
 
         // GET: api/Tournaments/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Tournament>> GetTournament(int id)
         {
-          if (uow.Tournament == null)
+          if (uow.TournamentRepository == null)
           {
               return NotFound();
           }
-            var tournament = await uow.Tournament.FindAsync(id);
+            var tournament = await uow.TournamentRepository.Get(id); // FindAsync()
 
             if (tournament == null)
             {
@@ -61,15 +62,16 @@ namespace Lms.Api.Controllers
                 return BadRequest();
             }
 
-            uow.Entry(tournament).State = EntityState.Modified;
+            //uow.Entry(tournament).State = EntityState.Modified;
+            uow.TournamentRepository.Update(tournament);
 
             try
             {
-                await uow.SaveChangesAsync();
+                await uow.CompleteAsync(); // SaveChangesAsync()
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!TournamentExists(id))
+                if (!await TournamentExists(id))
                 {
                     return NotFound();
                 }
@@ -87,12 +89,12 @@ namespace Lms.Api.Controllers
         [HttpPost]
         public async Task<ActionResult<Tournament>> PostTournament(Tournament tournament)
         {
-          if (uow.Tournament == null)
+          if (uow.TournamentRepository == null)
           {
               return Problem("Entity set 'LmsApiContext.Tournament'  is null.");
           }
-            uow.Tournament.Add(tournament);
-            await uow.SaveChangesAsync();
+            uow.TournamentRepository.Add(tournament); // Add()
+            await uow.CompleteAsync(); // SaveChangesAsync()
 
             return CreatedAtAction("GetTournament", new { id = tournament.Id }, tournament);
         }
@@ -101,25 +103,25 @@ namespace Lms.Api.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteTournament(int id)
         {
-            if (uow.Tournament == null)
+            if (uow.TournamentRepository == null)
             {
                 return NotFound();
             }
-            var tournament = await uow.Tournament.FindAsync(id);
+            var tournament = await uow.TournamentRepository.Get(id);  // FindAsync()
             if (tournament == null)
             {
                 return NotFound();
             }
 
-            uow.Tournament.Remove(tournament);
-            await uow.SaveChangesAsync();
+            uow.TournamentRepository.Remove(tournament); // Remove()
+            await uow.CompleteAsync(); // SaveChangesAsync()
 
             return NoContent();
         }
 
-        private bool TournamentExists(int id)
+        private async Task<bool> TournamentExists(int id)
         {
-            return (uow.Tournament?.Any(e => e.Id == id)).GetValueOrDefault();
+            return await uow.TournamentRepository.AnyAsync(id); // Any()
         }
     }
 }
