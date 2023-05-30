@@ -12,7 +12,7 @@ namespace Lms.Api.Extensions
                 var serviceProvider = scope.ServiceProvider;
                 var db = serviceProvider.GetRequiredService<LmsApiContext>();
 
-                //db.Database.EnsureDeleted();
+                //db.Database.EnsureDeleted(); // Om en ny seedning ska göras vid varje uppstart.
                 //db.Database.Migrate();
                 //db.Database.EnsureCreated();
 
